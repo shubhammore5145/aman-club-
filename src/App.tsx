@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import React, { useState } from 'react';
+import { AuthProvider } from './contexts/AuthContext';
 import { GymProvider } from './contexts/GymContext';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 
@@ -22,39 +22,16 @@ import { EquipmentPage } from './pages/equipment/EquipmentPage';
 import { ReportsPage } from './pages/reports/ReportsPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
 
-// Super Admin Pages
-import { SuperAdminDashboard } from './pages/super-admin/SuperAdminDashboard';
-import { GymsManagement } from './pages/super-admin/GymsManagement';
-import { SaaSSubscriptions } from './pages/super-admin/SaaSSubscriptions';
-
-// Trainer & Member Portals
-import { TrainerPortalPage } from './pages/trainer-portal/TrainerPortalPage';
-import { MemberPortalPage } from './pages/member-portal/MemberPortalPage';
-
 // Modals
 import { MemberModal } from './components/members/MemberModal';
 import { RecordPaymentModal } from './components/payments/RecordPaymentModal';
 
 const AppContent: React.FC = () => {
-  const { currentRole, currentUser } = useAuth();
   const [currentPage, setCurrentPage] = useState<string>('overview');
   const [authView, setAuthView] = useState<'login' | 'register' | 'forgot-password' | 'authenticated'>('authenticated');
 
   const [addMemberModalOpen, setAddMemberModalOpen] = useState(false);
   const [recordPaymentModalOpen, setRecordPaymentModalOpen] = useState(false);
-
-  // Sync default page when role switches
-  useEffect(() => {
-    if (currentRole === 'super_admin') {
-      setCurrentPage('super-admin-overview');
-    } else if (currentRole === 'trainer') {
-      setCurrentPage('trainer-portal');
-    } else if (currentRole === 'member') {
-      setCurrentPage('member-portal');
-    } else {
-      setCurrentPage('overview');
-    }
-  }, [currentRole]);
 
   // Auth pages routing
   if (authView === 'login') {
@@ -84,30 +61,8 @@ const AppContent: React.FC = () => {
     );
   }
 
-  // Render current dashboard page based on role and page selection
+  // Render Gym Owner pages
   const renderPage = () => {
-    // Super Admin pages
-    if (currentPage === 'super-admin-overview') {
-      return <SuperAdminDashboard onNavigate={setCurrentPage} />;
-    }
-    if (currentPage === 'super-admin-gyms') {
-      return <GymsManagement />;
-    }
-    if (currentPage === 'super-admin-subscriptions') {
-      return <SaaSSubscriptions />;
-    }
-
-    // Trainer Portal
-    if (currentPage === 'trainer-portal') {
-      return <TrainerPortalPage onNavigate={setCurrentPage} />;
-    }
-
-    // Member Portal
-    if (currentPage === 'member-portal' || currentPage === 'member-qr') {
-      return <MemberPortalPage />;
-    }
-
-    // Standard / Gym Owner Pages
     switch (currentPage) {
       case 'overview':
         return (

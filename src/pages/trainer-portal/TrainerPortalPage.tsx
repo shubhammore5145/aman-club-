@@ -194,3 +194,4 @@ export const TrainerPortalPage: React.FC<TrainerPortalPageProps> = ({ onNavigate
     </div>
   );
 };
+

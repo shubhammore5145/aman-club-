@@ -300,3 +300,4 @@ export interface ActivityLog {
   details?: Record<string, any>;
   created_at: string;
 }
+

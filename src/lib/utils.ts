@@ -61,3 +61,4 @@ export function generateMemberCode(prefix: string = 'AMAN'): string {
   const random = Math.floor(100 + Math.random() * 900);
   return `${prefix}-${random}`;
 }
+

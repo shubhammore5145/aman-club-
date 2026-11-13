@@ -38,21 +38,21 @@ import {
 } from './mockData';
 
 const STORAGE_KEYS = {
-  GYMS: 'aman_gym_saas_gyms_v1',
-  PROFILES: 'aman_gym_saas_profiles_v1',
-  MEMBERSHIP_PLANS: 'aman_gym_saas_plans_v1',
-  TRAINERS: 'aman_gym_saas_trainers_v1',
-  MEMBERS: 'aman_gym_saas_members_v1',
-  PAYMENTS: 'aman_gym_saas_payments_v1',
-  ATTENDANCE: 'aman_gym_saas_attendance_v1',
-  WORKOUT_PLANS: 'aman_gym_saas_workouts_v1',
-  DIET_PLANS: 'aman_gym_saas_diets_v1',
-  EXPENSES: 'aman_gym_saas_expenses_v1',
-  EQUIPMENT: 'aman_gym_saas_equipment_v1',
-  NOTIFICATIONS: 'aman_gym_saas_notifications_v1',
-  SUBSCRIPTIONS: 'aman_gym_saas_subscriptions_v1',
-  CURRENT_USER_ID: 'aman_gym_saas_current_user_id_v1',
-  CURRENT_GYM_ID: 'aman_gym_saas_current_gym_id_v1',
+  GYMS: 'aman_gym_clean_gyms_v2',
+  PROFILES: 'aman_gym_clean_profiles_v2',
+  MEMBERSHIP_PLANS: 'aman_gym_clean_plans_v2',
+  TRAINERS: 'aman_gym_clean_trainers_v2',
+  MEMBERS: 'aman_gym_clean_members_v2',
+  PAYMENTS: 'aman_gym_clean_payments_v2',
+  ATTENDANCE: 'aman_gym_clean_attendance_v2',
+  WORKOUT_PLANS: 'aman_gym_clean_workouts_v2',
+  DIET_PLANS: 'aman_gym_clean_diets_v2',
+  EXPENSES: 'aman_gym_clean_expenses_v2',
+  EQUIPMENT: 'aman_gym_clean_equipment_v2',
+  NOTIFICATIONS: 'aman_gym_clean_notifications_v2',
+  SUBSCRIPTIONS: 'aman_gym_clean_subscriptions_v2',
+  CURRENT_USER_ID: 'aman_gym_clean_current_user_id_v2',
+  CURRENT_GYM_ID: 'aman_gym_clean_current_gym_id_v2',
 };
 
 // Event for reactive listeners
@@ -543,3 +543,4 @@ export class AppStorage {
     return load<GymSubscription[]>(STORAGE_KEYS.SUBSCRIPTIONS, INITIAL_SUBSCRIPTIONS);
   }
 }
+

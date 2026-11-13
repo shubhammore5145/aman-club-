@@ -322,3 +322,4 @@ export const WorkoutsPage: React.FC = () => {
     </div>
   );
 };
+

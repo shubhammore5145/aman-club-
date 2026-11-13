@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { Flame, Lock, Mail, ArrowRight, ShieldCheck, Dumbbell, User } from 'lucide-react';
-import { UserRole } from '../../types/database';
+import { Flame, Lock, Mail, ArrowRight, ShieldCheck } from 'lucide-react';
 
 interface LoginPageProps {
   onNavigateToRegister: () => void;
@@ -16,7 +15,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   onNavigateToForgotPassword,
   onLoginSuccess,
 }) => {
-  const { login, switchRole } = useAuth();
+  const { login } = useAuth();
   const [email, setEmail] = useState('aman@amansportclub.com');
   const [password, setPassword] = useState('password123');
   const [error, setError] = useState('');
@@ -28,19 +27,14 @@ export const LoginPage: React.FC<LoginPageProps> = ({
     setError('');
 
     setTimeout(() => {
-      const success = login(email);
-      if (success) {
-        onLoginSuccess();
-      } else {
-        // Fallback default
-        setError('Invalid credentials. You can use the quick demo logins below!');
-      }
+      login(email);
+      onLoginSuccess();
       setIsLoading(false);
     }, 400);
   };
 
-  const handleQuickDemoLogin = (role: UserRole) => {
-    switchRole(role);
+  const handleQuickOwnerLogin = () => {
+    login('aman@amansportclub.com');
     onLoginSuccess();
   };
 
@@ -58,15 +52,15 @@ export const LoginPage: React.FC<LoginPageProps> = ({
           </div>
           <h1 className="text-2xl font-black text-white tracking-tight">AMAN SPORT CLUB</h1>
           <p className="text-xs text-orange-400 font-semibold tracking-wider uppercase">
-            Premium Gym Management SaaS Platform
+            Gym Owner Management Console
           </p>
         </div>
 
         {/* Login Box */}
         <div className="bg-[#101522] border border-[#232D42] rounded-2xl p-6 sm:p-8 shadow-2xl space-y-5">
           <div className="border-b border-[#1E283D] pb-3">
-            <h2 className="text-lg font-bold text-white">Sign In to Dashboard</h2>
-            <p className="text-xs text-slate-400 mt-0.5">Secure role-based multi-tenant authentication</p>
+            <h2 className="text-lg font-bold text-white">Owner Portal Sign In</h2>
+            <p className="text-xs text-slate-400 mt-0.5">Manage members, attendance, payments and staff</p>
           </div>
 
           {error && (
@@ -77,7 +71,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
 
           <form onSubmit={handleLogin} className="space-y-4">
             <Input
-              label="Email Address"
+              label="Owner Email Address"
               type="email"
               required
               leftIcon={<Mail className="w-4 h-4" />}
@@ -115,63 +109,31 @@ export const LoginPage: React.FC<LoginPageProps> = ({
               isLoading={isLoading}
               rightIcon={<ArrowRight className="w-4 h-4" />}
             >
-              Sign In
+              Sign In to Dashboard
             </Button>
           </form>
 
-          {/* Quick Demo Role Logins */}
-          <div className="pt-4 border-t border-[#1E283D] space-y-2.5">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">
-              Quick 1-Click Demo Logins:
-            </p>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <button
-                type="button"
-                onClick={() => handleQuickDemoLogin('gym_owner')}
-                className="p-2 rounded-lg bg-[#141B2A] border border-[#232F48] hover:border-orange-500/50 text-slate-200 hover:text-white transition-all text-left"
-              >
-                <p className="font-bold text-orange-400">Gym Owner</p>
-                <p className="text-[10px] text-slate-500">Aman Sport club</p>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickDemoLogin('super_admin')}
-                className="p-2 rounded-lg bg-[#141B2A] border border-[#232F48] hover:border-orange-500/50 text-slate-200 hover:text-white transition-all text-left"
-              >
-                <p className="font-bold text-sky-400">Super Admin</p>
-                <p className="text-[10px] text-slate-500">All Gym Tenants</p>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickDemoLogin('trainer')}
-                className="p-2 rounded-lg bg-[#141B2A] border border-[#232F48] hover:border-orange-500/50 text-slate-200 hover:text-white transition-all text-left"
-              >
-                <p className="font-bold text-emerald-400">Head Trainer</p>
-                <p className="text-[10px] text-slate-500">Vikram Sharma</p>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickDemoLogin('member')}
-                className="p-2 rounded-lg bg-[#141B2A] border border-[#232F48] hover:border-orange-500/50 text-slate-200 hover:text-white transition-all text-left"
-              >
-                <p className="font-bold text-purple-400">Athlete Member</p>
-                <p className="text-[10px] text-slate-500">Rahul Verma</p>
-              </button>
-            </div>
+          {/* Quick Demo Owner Login */}
+          <div className="pt-3 border-t border-[#1E283D]">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full text-xs py-2 text-orange-400 border-orange-500/30 hover:bg-orange-500/10"
+              onClick={handleQuickOwnerLogin}
+            >
+              Instant 1-Click Sign In as Aman Singh (Owner)
+            </Button>
           </div>
         </div>
 
         {/* Register Prompt */}
         <p className="text-center text-xs text-slate-400">
-          Want to register your gym?{' '}
+          New gym owner?{' '}
           <button
             onClick={onNavigateToRegister}
             className="text-orange-400 hover:text-orange-300 font-bold underline ml-1"
           >
-            Start 14-Day Free SaaS Trial
+            Create New Gym Account
           </button>
         </p>
       </div>

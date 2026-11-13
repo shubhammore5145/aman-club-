@@ -267,3 +267,4 @@ export const GymsManagement: React.FC = () => {
     </div>
   );
 };
+

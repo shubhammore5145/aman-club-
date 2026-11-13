@@ -77,3 +77,4 @@ export const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({ onBackTo
     </div>
   );
 };
+

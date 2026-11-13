@@ -90,7 +90,7 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({ isOpen, onClose,
 
           <p className="text-xs font-semibold text-slate-200">Point Camera at Member QR Badge</p>
           <p className="text-[11px] text-slate-500 mt-1 max-w-xs">
-            Position member card within frame or select test member below for simulation
+            Hold member card within frame or enter member code below
           </p>
 
           <div className="mt-3 flex items-center gap-2 text-[10px] text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
@@ -130,13 +130,13 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({ isOpen, onClose,
 
         {/* Manual code search/input */}
         <div className="space-y-2">
-          <label className="text-xs font-medium text-slate-300">Or enter Member Code / QR Token:</label>
+          <label className="text-xs font-medium text-slate-300">Enter Member Code / QR Token:</label>
           <div className="flex gap-2">
             <div className="relative flex-1">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="e.g. AMAN-001 or AMAN-QR-RAHUL-001"
+                placeholder="e.g. AMAN-001"
                 value={tokenInput}
                 onChange={e => setTokenInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleProcessCheckIn(tokenInput)}
@@ -148,37 +148,40 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({ isOpen, onClose,
               onClick={() => handleProcessCheckIn(tokenInput)}
               disabled={!tokenInput.trim()}
             >
-              Validate
+              Check-In
             </Button>
           </div>
         </div>
 
-        {/* Quick Simulator Buttons */}
-        <div className="pt-2 border-t border-[#1E273A]">
-          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">
-            Quick Simulate Check-In with Registered Members:
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            {members.slice(0, 4).map(m => (
-              <button
-                key={m.id}
-                onClick={() => handleProcessCheckIn(m.qr_code_token)}
-                className="flex items-center gap-2 p-2 rounded-lg bg-[#121826] border border-[#202B40] hover:border-orange-500/50 hover:bg-[#172034] text-left transition-all text-xs"
-              >
-                <img
-                  src={m.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80'}
-                  alt={m.full_name}
-                  className="w-7 h-7 rounded-full object-cover shrink-0"
-                />
-                <div className="truncate">
-                  <p className="font-semibold text-slate-200 truncate">{m.full_name}</p>
-                  <p className="text-[10px] text-slate-400">{m.member_code}</p>
-                </div>
-              </button>
-            ))}
+        {/* Registered Members Quick List */}
+        {members.length > 0 && (
+          <div className="pt-2 border-t border-[#1E273A]">
+            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">
+              Recent Members:
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {members.slice(0, 4).map(m => (
+                <button
+                  key={m.id}
+                  onClick={() => handleProcessCheckIn(m.qr_code_token)}
+                  className="flex items-center gap-2 p-2 rounded-lg bg-[#121826] border border-[#202B40] hover:border-orange-500/50 hover:bg-[#172034] text-left transition-all text-xs"
+                >
+                  <img
+                    src={m.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80'}
+                    alt={m.full_name}
+                    className="w-7 h-7 rounded-full object-cover shrink-0"
+                  />
+                  <div className="truncate">
+                    <p className="font-semibold text-slate-200 truncate">{m.full_name}</p>
+                    <p className="text-[10px] text-slate-400">{m.member_code}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </Modal>
   );
 };
+

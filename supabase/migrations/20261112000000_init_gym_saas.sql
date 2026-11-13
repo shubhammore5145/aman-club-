@@ -487,3 +487,4 @@ CREATE POLICY "Members can view their assigned workout plan"
 CREATE POLICY "Members can view their assigned diet plan"
   ON public.diet_plans FOR SELECT
   USING (member_id IN (SELECT id FROM public.members WHERE profile_id = auth.uid()));
+

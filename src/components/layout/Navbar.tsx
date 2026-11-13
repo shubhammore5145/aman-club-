@@ -7,13 +7,11 @@ import {
   Search,
   Bell,
   QrCode,
-  Building2,
-  ChevronDown,
-  Check,
-  CheckCircle2,
+  Flame,
   Clock,
   CreditCard,
-  AlertCircle
+  AlertCircle,
+  CheckCircle2
 } from 'lucide-react';
 import { formatDate } from '../../lib/utils';
 import { GymNotification } from '../../types/database';
@@ -21,19 +19,15 @@ import { GymNotification } from '../../types/database';
 interface NavbarProps {
   onOpenSidebar: () => void;
   onOpenQRScanner: () => void;
-  onOpenMemberBadge?: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onOpenSidebar, onOpenQRScanner, onOpenMemberBadge }) => {
-  const { currentUser, currentRole } = useAuth();
-  const { currentGym, allGyms, switchGym } = useGym();
+export const Navbar: React.FC<NavbarProps> = ({ onOpenSidebar, onOpenQRScanner }) => {
+  const { currentUser } = useAuth();
+  const { currentGym } = useGym();
 
-  const [gymDropdownOpen, setGymDropdownOpen] = useState(false);
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
   const [notifications, setNotifications] = useState<GymNotification[]>([]);
-
   const notifRef = useRef<HTMLDivElement>(null);
-  const gymRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setNotifications(AppStorage.getNotifications(currentGym.id));
@@ -43,9 +37,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSidebar, onOpenQRScanner, 
     const handleClickOutside = (e: MouseEvent) => {
       if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
         setNotifDropdownOpen(false);
-      }
-      if (gymRef.current && !gymRef.current.contains(e.target as Node)) {
-        setGymDropdownOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -61,7 +52,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSidebar, onOpenQRScanner, 
 
   return (
     <header className="h-16 bg-[#0D121D]/90 backdrop-blur-md border-b border-[#1E273A] px-4 lg:px-6 flex items-center justify-between sticky top-0 z-20">
-      {/* Left: Mobile hamburger & Gym selector */}
+      {/* Left: Mobile hamburger & Gym Brand Badge */}
       <div className="flex items-center gap-3">
         <button
           onClick={onOpenSidebar}
@@ -70,83 +61,37 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSidebar, onOpenQRScanner, 
           <Menu className="w-5 h-5" />
         </button>
 
-        {/* Multi-tenant Gym Switcher (Available for Super Admin & Owners) */}
-        {(currentRole === 'super_admin' || currentRole === 'gym_owner') && (
-          <div className="relative" ref={gymRef}>
-            <button
-              onClick={() => setGymDropdownOpen(!gymDropdownOpen)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#141B2A] border border-[#232F48] hover:border-orange-500/50 text-xs font-semibold text-slate-200 transition-all"
-            >
-              <Building2 className="w-3.5 h-3.5 text-orange-400" />
-              <span className="max-w-[140px] sm:max-w-[180px] truncate">{currentGym.name}</span>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-            </button>
-
-            {gymDropdownOpen && (
-              <div className="absolute left-0 mt-2 w-64 bg-[#111726] border border-[#232F48] rounded-xl shadow-2xl p-2 z-50">
-                <div className="px-3 py-1.5 text-[10px] uppercase font-bold text-slate-400 border-b border-[#1E283D]">
-                  Switch Gym Tenant
-                </div>
-                <div className="mt-1 space-y-1">
-                  {allGyms.map(gym => (
-                    <button
-                      key={gym.id}
-                      onClick={() => {
-                        switchGym(gym.id);
-                        setGymDropdownOpen(false);
-                      }}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium text-left transition-colors ${
-                        gym.id === currentGym.id
-                          ? 'bg-orange-500/15 text-orange-400 font-semibold'
-                          : 'text-slate-300 hover:bg-[#1A2338]'
-                      }`}
-                    >
-                      <div className="truncate">
-                        <p className="truncate">{gym.name}</p>
-                        <p className="text-[10px] text-slate-500">{gym.city || 'Standard Tenant'}</p>
-                      </div>
-                      {gym.id === currentGym.id && <Check className="w-4 h-4 text-orange-400 shrink-0" />}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#141B2A] border border-[#232F48]">
+          <Flame className="w-4 h-4 text-orange-400 fill-orange-400" />
+          <span className="text-xs font-bold text-white tracking-wide">{currentGym.name}</span>
+          <span className="text-[10px] text-orange-400 font-semibold bg-orange-500/10 px-1.5 py-0.5 rounded border border-orange-500/20">
+            Owner Dashboard
+          </span>
+        </div>
       </div>
 
-      {/* Center: Search Bar */}
+      {/* Center: Global Search Bar */}
       <div className="hidden md:flex items-center flex-1 max-w-md mx-6">
         <div className="relative w-full">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
-            placeholder="Search members, phone, invoice, QR code..."
+            placeholder="Search members, mobile, invoices, QR token..."
             className="w-full bg-[#121826] border border-[#222D42] rounded-lg pl-9 pr-4 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-orange-500/60 transition-colors"
           />
         </div>
       </div>
 
-      {/* Right: Quick actions, notifications, user avatar */}
+      {/* Right: Quick actions, notifications, owner profile */}
       <div className="flex items-center gap-3">
         {/* Quick QR Check-in Button */}
-        {currentRole !== 'member' ? (
-          <button
-            onClick={onOpenQRScanner}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-500/15 text-orange-400 border border-orange-500/30 hover:bg-orange-500 hover:text-white transition-all text-xs font-semibold shadow-sm"
-          >
-            <QrCode className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">QR Check-In</span>
-          </button>
-        ) : (
-          <button
-            onClick={onOpenMemberBadge}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-500 text-white shadow-glow-orange hover:bg-orange-600 transition-all text-xs font-semibold"
-          >
-            <QrCode className="w-3.5 h-3.5" />
-            <span>My Pass</span>
-          </button>
-        )}
+        <button
+          onClick={onOpenQRScanner}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-500/15 text-orange-400 border border-orange-500/30 hover:bg-orange-500 hover:text-white transition-all text-xs font-semibold shadow-sm"
+        >
+          <QrCode className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">QR Check-In</span>
+        </button>
 
         {/* Notifications Dropdown */}
         <div className="relative" ref={notifRef}>
@@ -201,10 +146,10 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSidebar, onOpenQRScanner, 
           )}
         </div>
 
-        {/* Current User Chip */}
+        {/* Current User Chip - Aman Singh (Owner) */}
         <div className="flex items-center gap-2 pl-2 border-l border-[#1E273A]">
           <img
-            src={currentUser.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}
+            src={currentUser.avatar_url || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100'}
             alt={currentUser.full_name}
             className="w-7 h-7 rounded-full object-cover border border-orange-500/40"
           />
@@ -213,7 +158,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSidebar, onOpenQRScanner, 
               {currentUser.full_name}
             </p>
             <p className="text-[10px] text-orange-400 uppercase font-semibold">
-              {currentUser.role.replace('_', ' ')}
+              Gym Owner
             </p>
           </div>
         </div>

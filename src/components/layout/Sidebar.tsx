@@ -14,8 +14,6 @@ import {
   Wrench,
   BarChart3,
   Settings,
-  Building2,
-  ShieldAlert,
   LogOut,
   Flame,
   ChevronRight
@@ -29,56 +27,23 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, isOpen, onClose }) => {
-  const { currentRole, logout } = useAuth();
+  const { logout } = useAuth();
   const { currentGym } = useGym();
 
-  const getMenuItems = () => {
-    if (currentRole === 'super_admin') {
-      return [
-        { id: 'super-admin-overview', label: 'Platform Overview', icon: LayoutDashboard },
-        { id: 'super-admin-gyms', label: 'Gyms Directory', icon: Building2 },
-        { id: 'super-admin-subscriptions', label: 'SaaS Subscriptions', icon: CreditCard },
-      ];
-    }
-
-    if (currentRole === 'trainer') {
-      return [
-        { id: 'trainer-portal', label: 'Trainer Hub', icon: LayoutDashboard },
-        { id: 'members', label: 'Assigned Trainees', icon: Users },
-        { id: 'attendance', label: 'Attendance Check-in', icon: QrCode },
-        { id: 'workouts', label: 'Workout Plans', icon: Dumbbell },
-        { id: 'diets', label: 'Diet Plans', icon: UtensilsCrossed },
-      ];
-    }
-
-    if (currentRole === 'member') {
-      return [
-        { id: 'member-portal', label: 'My Fitness Hub', icon: LayoutDashboard },
-        { id: 'member-qr', label: 'Digital Member Card', icon: QrCode },
-        { id: 'workouts', label: 'My Workout Routine', icon: Dumbbell },
-        { id: 'diets', label: 'My Diet Schedule', icon: UtensilsCrossed },
-        { id: 'payments', label: 'My Receipts & Invoices', icon: IndianRupee },
-      ];
-    }
-
-    // Default Gym Owner Menu
-    return [
-      { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-      { id: 'members', label: 'Members', icon: Users },
-      { id: 'memberships', label: 'Memberships', icon: CreditCard },
-      { id: 'attendance', label: 'Attendance', icon: QrCode },
-      { id: 'payments', label: 'Payments', icon: IndianRupee },
-      { id: 'trainers', label: 'Trainers', icon: UserCheck },
-      { id: 'workouts', label: 'Workouts', icon: Dumbbell },
-      { id: 'diets', label: 'Diet Plans', icon: UtensilsCrossed },
-      { id: 'expenses', label: 'Expenses', icon: Receipt },
-      { id: 'equipment', label: 'Equipment', icon: Wrench },
-      { id: 'reports', label: 'Reports', icon: BarChart3 },
-      { id: 'settings', label: 'Gym Settings', icon: Settings },
-    ];
-  };
-
-  const menuItems = getMenuItems();
+  const menuItems = [
+    { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+    { id: 'members', label: 'Members', icon: Users },
+    { id: 'memberships', label: 'Memberships', icon: CreditCard },
+    { id: 'attendance', label: 'Attendance', icon: QrCode },
+    { id: 'payments', label: 'Payments', icon: IndianRupee },
+    { id: 'trainers', label: 'Trainers', icon: UserCheck },
+    { id: 'workouts', label: 'Workouts', icon: Dumbbell },
+    { id: 'diets', label: 'Diet Plans', icon: UtensilsCrossed },
+    { id: 'expenses', label: 'Expenses', icon: Receipt },
+    { id: 'equipment', label: 'Equipment', icon: Wrench },
+    { id: 'reports', label: 'Reports', icon: BarChart3 },
+    { id: 'settings', label: 'Gym Settings', icon: Settings },
+  ];
 
   return (
     <>
@@ -102,10 +67,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, isOpe
           </div>
           <div className="overflow-hidden">
             <h1 className="text-sm font-bold text-white tracking-wide truncate">
-              {currentRole === 'super_admin' ? 'SUPER ADMIN SAAS' : currentGym.name}
+              {currentGym.name}
             </h1>
             <p className="text-[10px] text-orange-400 uppercase tracking-widest font-semibold flex items-center gap-1">
-              {currentRole === 'super_admin' ? 'Master Control' : 'Premium Fitness Platform'}
+              Owner Control Center
             </p>
           </div>
         </div>
@@ -113,7 +78,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, isOpe
         {/* Navigation Items */}
         <div className="flex-1 py-4 px-3 overflow-y-auto space-y-1">
           <div className="px-3 pb-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-            {currentRole === 'super_admin' ? 'Management' : 'Gym Dashboard'}
+            Management Modules
           </div>
 
           {menuItems.map(item => {
@@ -151,18 +116,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, isOpe
           <div className="flex items-center justify-between p-2 rounded-lg bg-[#111726] border border-[#202B42]">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-8 h-8 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30 flex items-center justify-center font-bold text-xs shrink-0">
-                {currentGym.name.charAt(0)}
+                A
               </div>
               <div className="min-w-0">
-                <p className="text-xs font-medium text-slate-200 truncate">{currentGym.name}</p>
-                <p className="text-[10px] text-emerald-400 font-semibold uppercase">
-                  {currentGym.subscription_tier} Plan
+                <p className="text-xs font-medium text-slate-200 truncate">Aman Singh</p>
+                <p className="text-[10px] text-orange-400 font-semibold uppercase">
+                  Gym Owner
                 </p>
               </div>
             </div>
             <button
               onClick={logout}
-              title="Logout"
+              title="Sign Out"
               className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-md transition-colors"
             >
               <LogOut className="w-4 h-4" />

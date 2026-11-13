@@ -117,3 +117,4 @@ export const MemberQRBadgeModal: React.FC<MemberQRBadgeModalProps> = ({ isOpen, 
     </Modal>
   );
 };
+

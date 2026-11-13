@@ -199,3 +199,4 @@ export const TrainersPage: React.FC = () => {
     </div>
   );
 };
+

@@ -107,3 +107,4 @@ CREATE POLICY "Gym owners & trainers can manage members in their gym"
   USING (gym_id = public.get_user_gym_id() OR public.is_super_admin());
 ```
 Members, payments, workouts, and expenses are strictly segregated by `gym_id`. Gym A cannot read or modify Gym B's data under any condition.
+

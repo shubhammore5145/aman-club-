@@ -218,3 +218,4 @@ export function generatePaymentReceiptPDF(payment: PaymentRecord, gym: Gym, memb
 
   return doc;
 }
+

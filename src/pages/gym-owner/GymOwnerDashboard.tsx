@@ -20,7 +20,7 @@ import {
   FileText,
   Share2,
   Calendar,
-  Sparkles,
+  Wrench,
   ArrowRight
 } from 'lucide-react';
 import {
@@ -53,6 +53,7 @@ export const GymOwnerDashboard: React.FC<GymOwnerDashboardProps> = ({
   const [attendance, setAttendance] = useState(AppStorage.getAttendance(currentGym.id));
   const [trainers, setTrainers] = useState(AppStorage.getTrainers(currentGym.id));
   const [expenses, setExpenses] = useState(AppStorage.getExpenses(currentGym.id));
+  const [equipment, setEquipment] = useState(AppStorage.getEquipment(currentGym.id));
 
   const loadData = () => {
     setMembers(AppStorage.getMembers(currentGym.id));
@@ -60,6 +61,7 @@ export const GymOwnerDashboard: React.FC<GymOwnerDashboardProps> = ({
     setAttendance(AppStorage.getAttendance(currentGym.id));
     setTrainers(AppStorage.getTrainers(currentGym.id));
     setExpenses(AppStorage.getExpenses(currentGym.id));
+    setEquipment(AppStorage.getEquipment(currentGym.id));
   };
 
   useEffect(() => {
@@ -68,7 +70,7 @@ export const GymOwnerDashboard: React.FC<GymOwnerDashboardProps> = ({
     return () => window.removeEventListener(DATA_CHANGE_EVENT, loadData);
   }, [currentGym.id]);
 
-  // Statistics calculations from live database records
+  // Statistics calculations from actual records
   const totalMembersCount = members.length;
   const activeMembersCount = members.filter(m => m.status === 'active').length;
   const expiredMembersCount = members.filter(m => m.status === 'expired').length;
@@ -90,34 +92,48 @@ export const GymOwnerDashboard: React.FC<GymOwnerDashboardProps> = ({
     })
     .sort((a, b) => new Date(a.membership_end_date).getTime() - new Date(b.membership_end_date).getTime());
 
-  // Chart data: 6-month Revenue trend
-  const revenueChartData = [
-    { month: 'Jun', revenue: 78000, expenses: 42000 },
-    { month: 'Jul', revenue: 92000, expenses: 48000 },
-    { month: 'Aug', revenue: 114000, expenses: 51000 },
-    { month: 'Sep', revenue: 135000, expenses: 58000 },
-    { month: 'Oct', revenue: 148000, expenses: 62000 },
-    { month: 'Nov', revenue: totalMonthlyRevenue + 85000, expenses: 74000 },
-  ];
+  // Dynamically calculate 6-month Revenue trend from actual payments and expenses
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const now = new Date();
+  const revenueChartData = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const monthIndex = d.getMonth();
+    const year = d.getFullYear();
+    const monthLabel = months[monthIndex];
 
-  // Attendance by Day of Week
-  const attendanceTrendData = [
-    { day: 'Mon', count: 48 },
-    { day: 'Tue', count: 54 },
-    { day: 'Wed', count: 51 },
-    { day: 'Thu', count: 46 },
-    { day: 'Fri', count: 58 },
-    { day: 'Sat', count: 62 },
-    { day: 'Sun', count: 24 },
-  ];
+    const rev = payments
+      .filter(p => {
+        const pd = new Date(p.payment_date);
+        return p.status === 'paid' && pd.getMonth() === monthIndex && pd.getFullYear() === year;
+      })
+      .reduce((sum, p) => sum + p.total_amount, 0);
+
+    const exp = expenses
+      .filter(e => {
+        const ed = new Date(e.expense_date);
+        return ed.getMonth() === monthIndex && ed.getFullYear() === year;
+      })
+      .reduce((sum, e) => sum + e.amount, 0);
+
+    revenueChartData.push({ month: monthLabel, revenue: rev, expenses: exp });
+  }
+
+  // Attendance by Day of Week calculated from actual attendance records
+  const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const attendanceTrendData = dayLabels.map((day, idx) => {
+    const targetJsDay = idx === 6 ? 0 : idx + 1;
+    const count = attendance.filter(a => {
+      const ad = new Date(a.date);
+      return ad.getDay() === targetJsDay;
+    }).length;
+    return { day, count };
+  });
 
   const handleDownloadReceipt = (payment: any) => {
-    if (!payment.member) {
-      const m = members.find(mem => mem.id === payment.member_id) || members[0];
+    const m = payment.member || members.find(mem => mem.id === payment.member_id) || members[0];
+    if (m) {
       const doc = generatePaymentReceiptPDF(payment, currentGym, m);
-      doc.save(`${payment.invoice_number}.pdf`);
-    } else {
-      const doc = generatePaymentReceiptPDF(payment, currentGym, payment.member);
       doc.save(`${payment.invoice_number}.pdf`);
     }
   };
@@ -137,7 +153,7 @@ export const GymOwnerDashboard: React.FC<GymOwnerDashboardProps> = ({
           <div className="flex items-center gap-2">
             <h2 className="text-xl font-bold text-white tracking-tight">{currentGym.name} Overview</h2>
             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-500/15 text-orange-400 border border-orange-500/30">
-              Live SaaS
+              Live Dashboard
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
@@ -178,47 +194,47 @@ export const GymOwnerDashboard: React.FC<GymOwnerDashboardProps> = ({
         <StatsCard
           title="Total Members"
           value={totalMembersCount}
-          change="+12% this mo"
-          trend="up"
+          change={totalMembersCount > 0 ? `${activeMembersCount} Active` : 'No members yet'}
+          trend={totalMembersCount > 0 ? 'up' : 'neutral'}
           icon={<Users className="w-4 h-4" />}
-          description="Registered athletes"
+          description="Registered gym members"
         />
         <StatsCard
           title="Active Members"
           value={activeMembersCount}
-          change={`${Math.round((activeMembersCount / (totalMembersCount || 1)) * 100)}% active`}
-          trend="up"
+          change={totalMembersCount > 0 ? `${Math.round((activeMembersCount / (totalMembersCount || 1)) * 100)}% active` : '0%'}
+          trend={activeMembersCount > 0 ? 'up' : 'neutral'}
           icon={<UserCheck className="w-4 h-4 text-emerald-400" />}
-          description="In good standing"
+          description="Members in good standing"
         />
         <StatsCard
           title="Today Attendance"
           value={todayAttendanceCount}
-          change="Live check-ins"
-          trend="neutral"
+          change={todayAttendanceCount > 0 ? `${todayAttendanceCount} checked-in` : 'No check-ins today'}
+          trend={todayAttendanceCount > 0 ? 'up' : 'neutral'}
           icon={<QrCode className="w-4 h-4 text-orange-400" />}
           description="Members on floor today"
         />
         <StatsCard
           title="Monthly Revenue"
           value={formatCurrency(totalMonthlyRevenue, currentGym.currency_symbol)}
-          change="+18.4%"
-          trend="up"
+          change={payments.filter(p => p.status === 'paid').length > 0 ? `${payments.filter(p => p.status === 'paid').length} Paid Invoices` : '₹0 collected'}
+          trend={totalMonthlyRevenue > 0 ? 'up' : 'neutral'}
           icon={<IndianRupee className="w-4 h-4 text-emerald-400" />}
-          description="Total collected revenue"
+          description="Total received revenue"
         />
         <StatsCard
           title="Expired Members"
           value={expiredMembersCount}
-          change={expiredMembersCount > 0 ? 'Follow-up' : 'All clear'}
+          change={expiredMembersCount > 0 ? `${expiredMembersCount} to renew` : 'All memberships valid'}
           trend={expiredMembersCount > 0 ? 'down' : 'neutral'}
           icon={<AlertCircle className="w-4 h-4 text-rose-400" />}
-          description="Need renewal renewal"
+          description="Renewal follow-ups"
         />
         <StatsCard
           title="Pending Payments"
           value={formatCurrency(pendingAmount, currentGym.currency_symbol)}
-          change={`${pendingPaymentsList.length} invoices`}
+          change={pendingPaymentsList.length > 0 ? `${pendingPaymentsList.length} Invoices pending` : 'Zero dues'}
           trend={pendingAmount > 0 ? 'down' : 'neutral'}
           icon={<Receipt className="w-4 h-4 text-amber-400" />}
           description="Outstanding balances"
@@ -226,18 +242,18 @@ export const GymOwnerDashboard: React.FC<GymOwnerDashboardProps> = ({
         <StatsCard
           title="Active Trainers"
           value={trainers.length}
-          change="Full-time staff"
+          change={trainers.length > 0 ? `${trainers.length} On staff` : 'No trainers added'}
           trend="neutral"
           icon={<TrendingUp className="w-4 h-4 text-sky-400" />}
-          description="Certified fitness coaches"
+          description="Fitness coaching staff"
         />
         <StatsCard
-          title="Avg Floor Usage"
-          value="84%"
-          change="Peak: 6-9 PM"
-          trend="up"
-          icon={<Sparkles className="w-4 h-4 text-purple-400" />}
-          description="Equipment utilization"
+          title="Equipment Assets"
+          value={equipment.length}
+          change={equipment.length > 0 ? `${equipment.length} logged` : 'No assets logged'}
+          trend="neutral"
+          icon={<Wrench className="w-4 h-4 text-purple-400" />}
+          description="Gym machinery & racks"
         />
       </div>
 
@@ -250,7 +266,7 @@ export const GymOwnerDashboard: React.FC<GymOwnerDashboardProps> = ({
               <CardTitle>Financial Trajectory & Revenue Growth</CardTitle>
               <CardDescription>Monthly collections vs operating expenses</CardDescription>
             </div>
-            <Badge variant="orange" size="sm">Last 6 Months</Badge>
+            <Badge variant="orange" size="sm">Past 6 Months</Badge>
           </CardHeader>
           <div className="h-72 w-full pt-2">
             <ResponsiveContainer width="100%" height="100%">
@@ -310,7 +326,7 @@ export const GymOwnerDashboard: React.FC<GymOwnerDashboardProps> = ({
           <CardHeader>
             <div>
               <CardTitle>Recent Payments & Invoices</CardTitle>
-              <CardDescription>Live transaction records with downloadable PDF receipts</CardDescription>
+              <CardDescription>Transaction records with downloadable PDF receipts</CardDescription>
             </div>
             <button
               onClick={() => onNavigate('payments')}
@@ -320,44 +336,59 @@ export const GymOwnerDashboard: React.FC<GymOwnerDashboardProps> = ({
             </button>
           </CardHeader>
 
-          <div className="space-y-3">
-            {payments.slice(0, 4).map(p => (
-              <div
-                key={p.id}
-                className="flex items-center justify-between p-3 rounded-lg bg-[#0D121E] border border-[#1E283E] hover:border-orange-500/30 transition-all text-xs"
+          {payments.length === 0 ? (
+            <div className="py-12 text-center text-slate-500 text-xs">
+              <Receipt className="w-8 h-8 text-slate-600 mx-auto mb-2" />
+              <p>No payments recorded yet.</p>
+              <Button
+                size="sm"
+                variant="outline"
+                className="mt-3 text-xs"
+                onClick={onOpenRecordPayment}
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center font-bold">
-                    ₹
+                Record First Payment
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {payments.slice(0, 5).map(p => (
+                <div
+                  key={p.id}
+                  className="flex items-center justify-between p-3 rounded-lg bg-[#0D121E] border border-[#1E283E] hover:border-orange-500/30 transition-all text-xs"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center font-bold">
+                      ₹
+                    </div>
+                    <div>
+                      <p className="font-semibold text-slate-100">{p.member?.full_name || 'Member'}</p>
+                      <p className="text-[11px] text-slate-400 flex items-center gap-1.5 mt-0.5">
+                        <span>{p.invoice_number}</span>
+                        <span>•</span>
+                        <span className="uppercase text-orange-400 font-medium">{p.payment_method}</span>
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-semibold text-slate-100">{p.member?.full_name || 'Member'}</p>
-                    <p className="text-[11px] text-slate-400 flex items-center gap-1.5 mt-0.5">
-                      <span>{p.invoice_number}</span>
-                      <span>•</span>
-                      <span className="uppercase text-orange-400 font-medium">{p.payment_method}</span>
-                    </p>
-                  </div>
-                </div>
 
-                <div className="flex items-center gap-3">
-                  <div className="text-right">
-                    <p className="font-bold text-slate-100">{formatCurrency(p.total_amount, currentGym.currency_symbol)}</p>
-                    <p className="text-[10px] text-slate-500">{formatDate(p.payment_date)}</p>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <p className="font-bold text-slate-100">{formatCurrency(p.total_amount, currentGym.currency_symbol)}</p>
+                      <p className="text-[10px] text-slate-500">{formatDate(p.payment_date)}</p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="p-1.5 h-auto text-orange-400 hover:bg-orange-500/10"
+                      title="Download Official PDF Receipt"
+                      onClick={() => handleDownloadReceipt(p)}
+                    >
+                      <FileText className="w-4 h-4" />
+                    </Button>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="p-1.5 h-auto text-orange-400 hover:bg-orange-500/10"
-                    title="Download Official PDF Receipt"
-                    onClick={() => handleDownloadReceipt(p)}
-                  >
-                    <FileText className="w-4 h-4" />
-                  </Button>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </Card>
 
         {/* Upcoming Expiries & WhatsApp Follow-up */}
@@ -367,14 +398,17 @@ export const GymOwnerDashboard: React.FC<GymOwnerDashboardProps> = ({
               <CardTitle>Upcoming Membership Expiries</CardTitle>
               <CardDescription>Members due for renewal within the next 15 days</CardDescription>
             </div>
-            <Badge variant="warning" size="sm">{upcomingExpiries.length} Pending Renewal</Badge>
+            <Badge variant="warning" size="sm">{upcomingExpiries.length} Due</Badge>
           </CardHeader>
 
-          <div className="space-y-3">
-            {upcomingExpiries.length === 0 ? (
-              <p className="text-xs text-slate-500 text-center py-8">No immediate expiries in the next 15 days.</p>
-            ) : (
-              upcomingExpiries.slice(0, 4).map(m => {
+          {upcomingExpiries.length === 0 ? (
+            <div className="py-12 text-center text-slate-500 text-xs">
+              <Calendar className="w-8 h-8 text-slate-600 mx-auto mb-2" />
+              <p>No memberships due for expiry within the next 15 days.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {upcomingExpiries.slice(0, 5).map(m => {
                 const days = getDaysRemaining(m.membership_end_date);
                 return (
                   <div
@@ -408,9 +442,9 @@ export const GymOwnerDashboard: React.FC<GymOwnerDashboardProps> = ({
                     </div>
                   </div>
                 );
-              })
-            )}
-          </div>
+              })}
+            </div>
+          )}
         </Card>
       </div>
     </div>
