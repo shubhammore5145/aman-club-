@@ -10,6 +10,7 @@ import {
   Trainer,
   Member,
   PaymentRecord,
+  PaymentMethod,
   AttendanceRecord,
   WorkoutPlan,
   DietPlan,
@@ -243,14 +244,20 @@ export class AppStorage {
     const all = load<Member[]>(STORAGE_KEYS.MEMBERS, INITIAL_MEMBERS);
     const plans = load<MembershipPlan[]>(STORAGE_KEYS.MEMBERSHIP_PLANS, INITIAL_MEMBERSHIP_PLANS);
     const trainers = load<Trainer[]>(STORAGE_KEYS.TRAINERS, INITIAL_TRAINERS);
+    const today = new Date().toISOString().split('T')[0];
 
     return all
       .filter(m => m.gym_id === gymId)
-      .map(m => ({
-        ...m,
-        membership_plan: plans.find(p => p.id === m.membership_plan_id),
-        assigned_trainer: trainers.find(t => t.id === m.assigned_trainer_id),
-      }));
+      .map(m => {
+        const isPast = m.membership_end_date < today;
+        const currentStatus = isPast && m.status === 'active' ? 'expired' : m.status;
+        return {
+          ...m,
+          status: currentStatus,
+          membership_plan: plans.find(p => p.id === m.membership_plan_id),
+          assigned_trainer: trainers.find(t => t.id === m.assigned_trainer_id),
+        };
+      });
   }
 
   static getMemberById(memberId: string): Member | undefined {
@@ -288,6 +295,87 @@ export class AppStorage {
     const all = load<Member[]>(STORAGE_KEYS.MEMBERS, INITIAL_MEMBERS);
     const updated = all.map(m => m.id === member.id ? { ...member, updated_at: new Date().toISOString() } : m);
     save(STORAGE_KEYS.MEMBERS, updated);
+  }
+
+  static renewMembership(params: {
+    memberId: string;
+    newPlanId: string;
+    paymentAmount: number;
+    paymentMethod: PaymentMethod;
+    transactionId?: string;
+    notes?: string;
+  }): { success: boolean; message: string; updatedMember?: Member } {
+    const all = load<Member[]>(STORAGE_KEYS.MEMBERS, INITIAL_MEMBERS);
+    const member = all.find(m => m.id === params.memberId);
+    if (!member) return { success: false, message: 'Member not found' };
+
+    const plan = this.getPlanById(params.newPlanId);
+    if (!plan) return { success: false, message: 'Selected plan not found' };
+
+    // Calculate dates:
+    // If member is currently still active and end date is in the future, extend from their current end date!
+    // If member is already expired, start from today!
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const currentEnd = new Date(member.membership_end_date);
+    currentEnd.setHours(0, 0, 0, 0);
+
+    const startDate = (currentEnd > today && member.status === 'active')
+      ? currentEnd
+      : today;
+
+    const newEndDate = new Date(startDate);
+    newEndDate.setDate(startDate.getDate() + (plan.duration_days || 30));
+
+    const startDateStr = startDate.toISOString().split('T')[0];
+    const newEndDateStr = newEndDate.toISOString().split('T')[0];
+
+    const updatedMember: Member = {
+      ...member,
+      membership_plan_id: plan.id,
+      membership_start_date: startDateStr,
+      membership_end_date: newEndDateStr,
+      status: 'active',
+      updated_at: new Date().toISOString(),
+    };
+
+    const updatedAll = all.map(m => m.id === member.id ? updatedMember : m);
+    save(STORAGE_KEYS.MEMBERS, updatedAll);
+
+    // Record renewal invoice / payment
+    const baseAmount = Number((params.paymentAmount / 1.18).toFixed(2));
+    const taxAmount = Number((params.paymentAmount - baseAmount).toFixed(2));
+
+    this.recordPayment({
+      gym_id: member.gym_id,
+      member_id: member.id,
+      membership_plan_id: plan.id,
+      invoice_number: `AMAN-REN-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
+      amount: baseAmount,
+      tax_amount: taxAmount,
+      discount_amount: 0,
+      total_amount: params.paymentAmount,
+      payment_method: params.paymentMethod,
+      payment_date: new Date().toISOString(),
+      status: 'paid',
+      transaction_id: params.transactionId || `REN-${Date.now().toString(36).toUpperCase()}`,
+      notes: params.notes || `Membership renewed with ${plan.name} (${plan.duration_months} mo)`,
+    });
+
+    // Add in-app notification
+    this.addNotification({
+      gym_id: member.gym_id,
+      title: 'Membership Renewed',
+      message: `${member.full_name} (${member.member_code}) renewed with ${plan.name} until ${newEndDateStr}.`,
+      type: 'expiry',
+      is_read: false,
+    });
+
+    return {
+      success: true,
+      message: `${member.full_name}'s membership successfully renewed with ${plan.name}! Valid until ${newEndDateStr}.`,
+      updatedMember,
+    };
   }
 
   static deleteMember(memberId: string): void {

@@ -6,8 +6,9 @@ import { Tabs } from '../ui/Tabs';
 import { Member } from '../../types/database';
 import { useGym } from '../../contexts/GymContext';
 import { AppStorage } from '../../lib/storage';
-import { formatDate, formatCurrency, formatTime, getDaysRemaining } from '../../lib/utils';
+import { formatDate, formatCurrency, formatTime, getDaysRemaining, getExpiryStatus } from '../../lib/utils';
 import { generatePaymentReceiptPDF } from '../../lib/pdfGenerator';
+import { RenewMembershipModal } from './RenewMembershipModal';
 import {
   User,
   CreditCard,
@@ -23,7 +24,8 @@ import {
   Download,
   Share2,
   CheckCircle2,
-  Clock
+  Clock,
+  RotateCcw
 } from 'lucide-react';
 
 interface MemberProfileDrawerProps {
@@ -41,6 +43,7 @@ export const MemberProfileDrawer: React.FC<MemberProfileDrawerProps> = ({
 }) => {
   const { currentGym } = useGym();
   const [activeTab, setActiveTab] = useState('overview');
+  const [isRenewModalOpen, setIsRenewModalOpen] = useState(false);
 
   if (!member) return null;
 
@@ -50,6 +53,7 @@ export const MemberProfileDrawer: React.FC<MemberProfileDrawerProps> = ({
   const diets = AppStorage.getDietPlans(currentGym.id).filter(d => d.member_id === member.id);
 
   const daysRemaining = getDaysRemaining(member.membership_end_date);
+  const expiry = getExpiryStatus(member.membership_end_date);
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: <User className="w-3.5 h-3.5" /> },
@@ -85,22 +89,32 @@ export const MemberProfileDrawer: React.FC<MemberProfileDrawerProps> = ({
               <div className="flex items-center gap-2">
                 <h3 className="text-base font-bold text-white">{member.full_name}</h3>
                 <Badge
-                  variant={member.status === 'active' ? 'success' : 'danger'}
+                  variant={expiry.variant}
                   size="sm"
+                  className="font-bold"
                 >
-                  {member.status}
+                  {expiry.label}
                 </Badge>
               </div>
               <p className="text-xs text-orange-400 font-medium mt-0.5">
                 {member.membership_plan?.name || 'Standard Membership'}
               </p>
               <p className="text-[11px] text-slate-400 mt-0.5">
-                Valid until {formatDate(member.membership_end_date)} ({daysRemaining} days remaining)
+                Valid until {formatDate(member.membership_end_date)} ({daysRemaining >= 0 ? `${daysRemaining} days left` : 'Expired'})
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="primary"
+              className="bg-orange-500 hover:bg-orange-600 font-bold text-xs"
+              leftIcon={<RotateCcw className="w-3.5 h-3.5" />}
+              onClick={() => setIsRenewModalOpen(true)}
+            >
+              Renew Plan
+            </Button>
             <Button
               size="sm"
               variant="outline"
@@ -117,47 +131,76 @@ export const MemberProfileDrawer: React.FC<MemberProfileDrawerProps> = ({
 
         {/* Tab 1: Overview */}
         {activeTab === 'overview' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-            <div className="space-y-3 p-4 rounded-xl bg-[#0E1320] border border-[#1E273A]">
-              <h4 className="font-bold text-slate-200 uppercase tracking-wider text-[11px] pb-2 border-b border-[#1E273A]">
-                Contact & Personal Info
-              </h4>
-              <div className="flex items-center gap-2 text-slate-300">
-                <Phone className="w-3.5 h-3.5 text-slate-400" />
-                <span>{member.phone}</span>
+          <div className="space-y-4">
+            {/* Expiry Banner */}
+            <div className={`p-3.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs ${
+              expiry.isExpired
+                ? 'bg-rose-500/10 border-rose-500/30 text-rose-200'
+                : expiry.isExpiringSoon
+                ? 'bg-amber-500/10 border-amber-500/30 text-amber-200'
+                : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-200'
+            }`}>
+              <div>
+                <p className="font-bold text-white text-sm">
+                  {expiry.isExpired ? '⚠️ Membership Has Expired' : expiry.isExpiringSoon ? '⏰ Membership Expiring Soon' : '✅ Membership Active'}
+                </p>
+                <p className="text-[11px] text-slate-300 mt-0.5">
+                  Current Plan: <strong className="text-white">{member.membership_plan?.name || 'Standard'}</strong> • {expiry.label} (Valid until {formatDate(member.membership_end_date)})
+                </p>
               </div>
-              <div className="flex items-center gap-2 text-slate-300">
-                <Mail className="w-3.5 h-3.5 text-slate-400" />
-                <span>{member.email || 'No email provided'}</span>
-              </div>
-              <div className="flex items-center gap-2 text-slate-300">
-                <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                <span>{member.address || 'Address not registered'}</span>
-              </div>
-              <div className="flex items-center gap-2 text-slate-300">
-                <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                <span>Born: {formatDate(member.date_of_birth)} ({member.gender})</span>
-              </div>
+              <Button
+                size="sm"
+                variant="primary"
+                className="bg-orange-500 hover:bg-orange-600 font-bold text-xs shrink-0"
+                leftIcon={<RotateCcw className="w-3.5 h-3.5" />}
+                onClick={() => setIsRenewModalOpen(true)}
+              >
+                Renew Plan Now
+              </Button>
             </div>
 
-            <div className="space-y-3 p-4 rounded-xl bg-[#0E1320] border border-[#1E273A]">
-              <h4 className="font-bold text-slate-200 uppercase tracking-wider text-[11px] pb-2 border-b border-[#1E273A]">
-                Emergency & Health Profile
-              </h4>
-              <div className="flex items-start gap-2 text-slate-300">
-                <ShieldAlert className="w-3.5 h-3.5 text-amber-400 mt-0.5" />
-                <div>
-                  <p className="font-semibold text-slate-200">{member.emergency_contact_name || 'Emergency contact'}</p>
-                  <p className="text-slate-400">{member.emergency_contact_phone || 'N/A'}</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+              <div className="space-y-3 p-4 rounded-xl bg-[#0E1320] border border-[#1E273A]">
+                <h4 className="font-bold text-slate-200 uppercase tracking-wider text-[11px] pb-2 border-b border-[#1E273A]">
+                  Contact & Personal Info
+                </h4>
+                <div className="flex items-center gap-2 text-slate-300">
+                  <Phone className="w-3.5 h-3.5 text-slate-400" />
+                  <span>{member.phone}</span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-300">
+                  <Mail className="w-3.5 h-3.5 text-slate-400" />
+                  <span>{member.email || 'No email provided'}</span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-300">
+                  <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                  <span>{member.address || 'Address not registered'}</span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-300">
+                  <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Born: {formatDate(member.date_of_birth)} ({member.gender})</span>
                 </div>
               </div>
-              <div className="flex items-start gap-2 text-slate-300 pt-2 border-t border-[#1E273A]">
-                <HeartPulse className="w-3.5 h-3.5 text-rose-400 mt-0.5" />
-                <div>
-                  <p className="font-semibold text-slate-200">Medical Notes:</p>
-                  <p className="text-slate-400 leading-relaxed mt-0.5">
-                    {member.health_notes || 'No known allergies or medical restrictions recorded.'}
-                  </p>
+
+              <div className="space-y-3 p-4 rounded-xl bg-[#0E1320] border border-[#1E273A]">
+                <h4 className="font-bold text-slate-200 uppercase tracking-wider text-[11px] pb-2 border-b border-[#1E273A]">
+                  Emergency & Health Profile
+                </h4>
+                <div className="flex items-start gap-2 text-slate-300">
+                  <ShieldAlert className="w-3.5 h-3.5 text-amber-400 mt-0.5" />
+                  <div>
+                    <p className="font-semibold text-slate-200">{member.emergency_contact_name || 'Emergency contact'}</p>
+                    <p className="text-slate-400">{member.emergency_contact_phone || 'N/A'}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2 text-slate-300 pt-2 border-t border-[#1E273A]">
+                  <HeartPulse className="w-3.5 h-3.5 text-rose-400 mt-0.5" />
+                  <div>
+                    <p className="font-semibold text-slate-200">Medical Notes:</p>
+                    <p className="text-slate-400 leading-relaxed mt-0.5">
+                      {member.health_notes || 'No known allergies or medical restrictions recorded.'}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -300,6 +343,16 @@ export const MemberProfileDrawer: React.FC<MemberProfileDrawerProps> = ({
           </div>
         )}
       </div>
+
+      <RenewMembershipModal
+        isOpen={isRenewModalOpen}
+        onClose={() => setIsRenewModalOpen(false)}
+        member={member}
+        onSuccess={() => {
+          setIsRenewModalOpen(false);
+          onClose();
+        }}
+      />
     </Modal>
   );
 };

@@ -8,7 +8,8 @@ import { MemberQRBadgeModal } from '../../components/attendance/MemberQRBadgeMod
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Input } from '../../components/ui/Input';
-import { formatDate, getDaysRemaining } from '../../lib/utils';
+import { formatDate, getDaysRemaining, getExpiryStatus } from '../../lib/utils';
+import { RenewMembershipModal } from '../../components/members/RenewMembershipModal';
 import {
   Users,
   Plus,
@@ -21,7 +22,9 @@ import {
   Trash2,
   Share2,
   Phone,
-  UserCheck
+  UserCheck,
+  RotateCcw,
+  AlertTriangle
 } from 'lucide-react';
 
 interface MembersPageProps {
@@ -38,6 +41,7 @@ export const MembersPage: React.FC<MembersPageProps> = () => {
   const [memberToEdit, setMemberToEdit] = useState<Member | null>(null);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [qrPassMember, setQrPassMember] = useState<Member | null>(null);
+  const [renewModalMember, setRenewModalMember] = useState<Member | null>(null);
 
   const loadData = () => {
     setMembers(AppStorage.getMembers(currentGym.id));
@@ -152,22 +156,50 @@ export const MembersPage: React.FC<MembersPageProps> = () => {
             <Filter className="w-3.5 h-3.5" /> Status:
           </span>
           <div className="flex rounded-lg bg-[#0D121D] p-1 border border-[#232D42]">
-            {(['all', 'active', 'expired'] as const).map(s => (
+            {(
+              [
+                { id: 'all', label: `All (${members.length})` },
+                { id: 'active', label: `Active (${members.filter(m => m.status === 'active').length})` },
+                { id: 'expired', label: `Expired (${members.filter(m => m.status === 'expired').length})` },
+              ] as const
+            ).map(tab => (
               <button
-                key={s}
-                onClick={() => setStatusFilter(s)}
-                className={`px-3 py-1 text-xs rounded-md font-medium uppercase tracking-wider transition-colors ${
-                  statusFilter === s
-                    ? 'bg-orange-500 text-white font-semibold'
+                key={tab.id}
+                onClick={() => setStatusFilter(tab.id)}
+                className={`px-2.5 py-1 text-xs rounded-md font-medium uppercase tracking-wider transition-colors ${
+                  statusFilter === tab.id
+                    ? 'bg-orange-500 text-white font-semibold shadow-sm'
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
-                {s}
+                {tab.label}
               </button>
             ))}
           </div>
         </div>
       </div>
+
+      {/* Expired Members Alert Banner if any members are expired */}
+      {members.some(m => m.status === 'expired') && (
+        <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2.5 text-rose-300">
+            <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+            <span>
+              <strong className="text-white font-bold">{members.filter(m => m.status === 'expired').length} Member(s) have expired memberships.</strong> Click the orange <span className="text-orange-400 font-bold">Renew</span> button on their row to activate a new plan and extend validity.
+            </span>
+          </div>
+          {statusFilter !== 'expired' && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-xs h-7 border-rose-500/40 text-rose-300 hover:bg-rose-500/20 shrink-0"
+              onClick={() => setStatusFilter('expired')}
+            >
+              Filter Expired Members
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* Members Table */}
       <div className="bg-[#101522] border border-[#232D42] rounded-xl overflow-hidden shadow-sm">
@@ -177,7 +209,7 @@ export const MembersPage: React.FC<MembersPageProps> = () => {
               <tr className="border-b border-[#1E273A] bg-[#0E1320] text-slate-400 font-semibold uppercase tracking-wider text-[11px]">
                 <th className="py-3.5 px-4">Athlete / Member</th>
                 <th className="py-3.5 px-4">Contact</th>
-                <th className="py-3.5 px-4">Plan & Validity</th>
+                <th className="py-3.5 px-4">Plan & Expiry Status</th>
                 <th className="py-3.5 px-4">Trainer</th>
                 <th className="py-3.5 px-4">Status</th>
                 <th className="py-3.5 px-4 text-right">Actions</th>
@@ -192,7 +224,7 @@ export const MembersPage: React.FC<MembersPageProps> = () => {
                 </tr>
               ) : (
                 filteredMembers.map(m => {
-                  const days = getDaysRemaining(m.membership_end_date);
+                  const expiry = getExpiryStatus(m.membership_end_date);
                   return (
                     <tr key={m.id} className="hover:bg-[#131929] transition-colors">
                       {/* Name & Photo */}
@@ -218,15 +250,21 @@ export const MembersPage: React.FC<MembersPageProps> = () => {
                         <p className="text-slate-500 text-[11px] truncate max-w-[140px]">{m.email || 'N/A'}</p>
                       </td>
 
-                      {/* Plan */}
+                      {/* Plan & Expiry Details */}
                       <td className="py-3 px-4">
-                        <p className="text-slate-200 font-medium">{m.membership_plan?.name || 'General'}</p>
-                        <p className="text-[11px] text-slate-400">
-                          Exp: {formatDate(m.membership_end_date)}
-                          <span className={`ml-1 font-semibold ${days <= 7 ? 'text-amber-400' : 'text-slate-500'}`}>
-                            ({days >= 0 ? `${days}d left` : 'Expired'})
+                        <p className="text-slate-200 font-semibold">{m.membership_plan?.name || 'General'}</p>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <span className="text-[11px] text-slate-400">
+                            Exp: {formatDate(m.membership_end_date)}
                           </span>
-                        </p>
+                          <Badge
+                            variant={expiry.variant}
+                            size="sm"
+                            className="text-[10px] font-bold"
+                          >
+                            {expiry.label}
+                          </Badge>
+                        </div>
                       </td>
 
                       {/* Trainer */}
@@ -243,17 +281,39 @@ export const MembersPage: React.FC<MembersPageProps> = () => {
 
                       {/* Status */}
                       <td className="py-3 px-4">
-                        <Badge
-                          variant={m.status === 'active' ? 'success' : 'danger'}
-                          size="sm"
-                        >
-                          {m.status}
-                        </Badge>
+                        <div className="space-y-0.5">
+                          <Badge
+                            variant={m.status === 'active' ? 'success' : 'danger'}
+                            size="sm"
+                            className="uppercase font-bold tracking-wider"
+                          >
+                            {m.status}
+                          </Badge>
+                          {expiry.isExpired && (
+                            <p className="text-[10px] text-rose-400 font-semibold">Needs Renewal</p>
+                          )}
+                        </div>
                       </td>
 
                       {/* Actions */}
                       <td className="py-3 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {/* Direct Quick Renew Button */}
+                          <Button
+                            size="sm"
+                            variant={expiry.isExpired ? 'primary' : 'outline'}
+                            className={`h-7 px-2.5 text-[11px] font-bold ${
+                              expiry.isExpired
+                                ? 'bg-orange-500 hover:bg-orange-600 text-white shadow-glow-subtle'
+                                : 'text-orange-400 hover:text-white border-orange-500/30 hover:bg-orange-500/20'
+                            }`}
+                            leftIcon={<RotateCcw className="w-3 h-3" />}
+                            onClick={() => setRenewModalMember(m)}
+                            title={expiry.isExpired ? "Membership Expired! Click to renew plan" : "Renew or change membership plan"}
+                          >
+                            Renew
+                          </Button>
+
                           <button
                             title="Digital QR Card"
                             onClick={() => setQrPassMember(m)}
@@ -308,6 +368,14 @@ export const MembersPage: React.FC<MembersPageProps> = () => {
         isOpen={addModalOpen}
         onClose={() => setAddModalOpen(false)}
         memberToEdit={memberToEdit}
+        onSuccess={loadData}
+      />
+
+      {/* Renew Membership Modal */}
+      <RenewMembershipModal
+        isOpen={Boolean(renewModalMember)}
+        onClose={() => setRenewModalMember(null)}
+        member={renewModalMember}
         onSuccess={loadData}
       />
 

@@ -7,6 +7,7 @@ import { Card, CardHeader, CardTitle, CardDescription } from '../../components/u
 import { Badge } from '../../components/ui/Badge';
 import { formatCurrency, formatDate, getDaysRemaining } from '../../lib/utils';
 import { generatePaymentReceiptPDF } from '../../lib/pdfGenerator';
+import { RenewMembershipModal } from '../../components/members/RenewMembershipModal';
 import {
   Users,
   CreditCard,
@@ -21,7 +22,8 @@ import {
   Share2,
   Calendar,
   Wrench,
-  ArrowRight
+  ArrowRight,
+  RotateCcw
 } from 'lucide-react';
 import {
   AreaChart,
@@ -54,6 +56,7 @@ export const GymOwnerDashboard: React.FC<GymOwnerDashboardProps> = ({
   const [trainers, setTrainers] = useState(AppStorage.getTrainers(currentGym.id));
   const [expenses, setExpenses] = useState(AppStorage.getExpenses(currentGym.id));
   const [equipment, setEquipment] = useState(AppStorage.getEquipment(currentGym.id));
+  const [renewModalMember, setRenewModalMember] = useState<any | null>(null);
 
   const loadData = () => {
     setMembers(AppStorage.getMembers(currentGym.id));
@@ -88,7 +91,7 @@ export const GymOwnerDashboard: React.FC<GymOwnerDashboardProps> = ({
   const upcomingExpiries = members
     .filter(m => {
       const days = getDaysRemaining(m.membership_end_date);
-      return days >= 0 && days <= 15;
+      return days <= 15;
     })
     .sort((a, b) => new Date(a.membership_end_date).getTime() - new Date(b.membership_end_date).getTime());
 
@@ -395,36 +398,55 @@ export const GymOwnerDashboard: React.FC<GymOwnerDashboardProps> = ({
         <Card>
           <CardHeader>
             <div>
-              <CardTitle>Upcoming Membership Expiries</CardTitle>
-              <CardDescription>Members due for renewal within the next 15 days</CardDescription>
+              <CardTitle>Expiring & Expired Memberships</CardTitle>
+              <CardDescription>Members requiring renewal or expiring within 15 days</CardDescription>
             </div>
-            <Badge variant="warning" size="sm">{upcomingExpiries.length} Due</Badge>
+            <Badge variant={upcomingExpiries.some(m => getDaysRemaining(m.membership_end_date) < 0) ? 'danger' : 'warning'} size="sm">
+              {upcomingExpiries.length} Due
+            </Badge>
           </CardHeader>
 
           {upcomingExpiries.length === 0 ? (
             <div className="py-12 text-center text-slate-500 text-xs">
               <Calendar className="w-8 h-8 text-slate-600 mx-auto mb-2" />
-              <p>No memberships due for expiry within the next 15 days.</p>
+              <p>No memberships expired or expiring within the next 15 days.</p>
             </div>
           ) : (
             <div className="space-y-3">
-              {upcomingExpiries.slice(0, 5).map(m => {
+              {upcomingExpiries.slice(0, 6).map(m => {
                 const days = getDaysRemaining(m.membership_end_date);
+                const isPast = days < 0;
                 return (
                   <div
                     key={m.id}
-                    className="flex items-center justify-between p-3 rounded-lg bg-[#0D121E] border border-[#1E283E] hover:border-amber-500/30 transition-all text-xs"
+                    className={`flex items-center justify-between p-3 rounded-lg bg-[#0D121E] border transition-all text-xs ${
+                      isPast ? 'border-rose-500/40 hover:border-rose-500' : 'border-[#1E283E] hover:border-amber-500/30'
+                    }`}
                   >
                     <div className="flex items-center gap-3">
                       <img
                         src={m.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80'}
                         alt={m.full_name}
-                        className="w-8 h-8 rounded-full object-cover border border-amber-500/30"
+                        className={`w-9 h-9 rounded-full object-cover border ${isPast ? 'border-rose-500/60' : 'border-amber-500/40'}`}
                       />
                       <div>
-                        <p className="font-semibold text-slate-100">{m.full_name}</p>
-                        <p className="text-[11px] text-slate-400">
-                          {m.membership_plan?.name || 'Standard'} • <span className="text-amber-400 font-medium">Expires in {days} days</span>
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-slate-100">{m.full_name}</p>
+                          <span className="font-mono text-[10px] text-orange-400 bg-orange-500/10 px-1 rounded">
+                            {m.member_code}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-400 mt-0.5">
+                          {m.membership_plan?.name || 'Standard'} •{' '}
+                          {isPast ? (
+                            <span className="text-rose-400 font-bold">
+                              {days === -1 ? 'Expired yesterday' : `Expired ${Math.abs(days)}d ago`}
+                            </span>
+                          ) : days === 0 ? (
+                            <span className="text-amber-400 font-bold">Expires today</span>
+                          ) : (
+                            <span className="text-amber-400 font-medium">Expires in {days} days</span>
+                          )}
                         </p>
                       </div>
                     </div>
@@ -436,8 +458,19 @@ export const GymOwnerDashboard: React.FC<GymOwnerDashboardProps> = ({
                         className="text-[11px] px-2 py-1 h-auto text-emerald-400 hover:text-emerald-300"
                         leftIcon={<Share2 className="w-3 h-3" />}
                         onClick={() => handleWhatsAppReminder(m)}
+                        title="Send WhatsApp renewal alert"
                       >
                         WhatsApp
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        className="text-[11px] px-2.5 py-1 h-auto bg-orange-500 hover:bg-orange-600 text-white font-bold shadow-sm"
+                        leftIcon={<RotateCcw className="w-3 h-3" />}
+                        onClick={() => setRenewModalMember(m)}
+                        title="Open renewal window & choose new plan"
+                      >
+                        Renew
                       </Button>
                     </div>
                   </div>
@@ -447,6 +480,14 @@ export const GymOwnerDashboard: React.FC<GymOwnerDashboardProps> = ({
           )}
         </Card>
       </div>
+
+      {/* Renew Membership Modal */}
+      <RenewMembershipModal
+        isOpen={Boolean(renewModalMember)}
+        onClose={() => setRenewModalMember(null)}
+        member={renewModalMember}
+        onSuccess={loadData}
+      />
     </div>
   );
 };
